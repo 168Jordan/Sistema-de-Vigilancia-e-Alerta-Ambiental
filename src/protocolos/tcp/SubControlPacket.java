@@ -38,15 +38,15 @@ public abstract class SubControlPacket {
             case HELLO:
                 return HelloPacket.parse(corpo);
             case HELLO_OK:
-                return HelloOkPacket.deserialize(corpo);
+                return HelloOkPacket.parse(corpo);
             case REGISTER:
-                return RegisterPacket.deserialize(corpo);
+                return RegisterPacket.parse(corpo);
             case SUBSCRIBE:
-                return SubscribePacket.deserialize(corpo);
+                return SubscribePacket.parse(corpo);
             case UNSUBSCRIBE:
-                return UnsubscribePacket.deserialize(corpo);
+                return UnsubscribePacket.parse(corpo);
             case BYE:
-                return ByePacket.deserialize(corpo);
+                return ByePacket.parse(corpo);
             default:
                 throw new IllegalArgumentException("Tipo de subcontrole desconhecido: " + tipo);
         }

@@ -6,7 +6,8 @@ public enum SubControlType {
     REGISTER((byte)3),
     SUBSCRIBE((byte)4),
     UNSUBSCRIBE((byte)5),
-    BYE((byte)6);
+    BYE((byte)6),
+    REPLY((byte)7);
 
     private final byte codigo;
 
@@ -24,6 +25,6 @@ public enum SubControlType {
                 return type;
             }
         }
-        throw new IllegalArgumentException("Código inválido: " + codigo);
+        return null; // Retorna null se o código não corresponder a nenhum tipo conhecido
     }
 }
