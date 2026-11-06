@@ -3,7 +3,7 @@ import protocolos.tcp.pacotes.*;
 
 public abstract class SubControlPacket {
 
-    public static final int MAX_PACKET_SIZE = 1024; // Tamanho máximo do pacote em bytes
+    public static final byte MAX_PACKET_SIZE = (byte)1024; // Tamanho máximo do pacote em bytes
     public static final int HEADER_SIZE = 3; // Tamanho do cabeçalho em bytes (1 byte para o tipo de subcontrole + 2 bytes para o tamanho do payload)
     public abstract SubControlType getSubControlType(); // Método abstrato para obter o tipo do pacote
     protected abstract byte[]  corpoToBytes(); // Método abstrato para obter o corpo do pacote em bytes
@@ -47,6 +47,8 @@ public abstract class SubControlPacket {
                 return UnsubscribePacket.parse(corpo);
             case BYE:
                 return ByePacket.parse(corpo);
+            case REPLY:
+                return ReplyPacket.parse(corpo);
             default:
                 throw new IllegalArgumentException("Tipo de subcontrole desconhecido: " + tipo);
         }

@@ -20,7 +20,7 @@ public class HelloOkPacket extends SubControlPacket {
     }
 
     @Override 
-    public byte[] corpoToBytes() {
+    protected byte[] corpoToBytes() {
         return new byte[] {
             (byte) ((udpPort >> 8) & 0xFF),
             (byte) (udpPort & 0xFF)
