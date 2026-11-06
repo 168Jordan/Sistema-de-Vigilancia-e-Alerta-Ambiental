@@ -2,6 +2,7 @@ package protocolos.tcp;
 
 import java.io.DataInputStream;
 import java.io.IOException;
+import java.net.ProtocolException;
 import protocolos.tcp.pacotes.*;
 
 public abstract class SubControlPacket {
@@ -31,13 +32,17 @@ public abstract class SubControlPacket {
 
         int tamanho = ((header[1] & 0xFF) << 8) | (header[2] & 0xFF);
         if (tamanho > MAX_PACKET_SIZE - HEADER_SIZE) {
-            throw new IOException("Corpo demasiado grande");
+            throw new ProtocolException("Corpo demasiado grande: " + tamanho);
         }
 
         byte[] packet = new byte[HEADER_SIZE + tamanho];
         System.arraycopy(header, 0, packet, 0, HEADER_SIZE);
         in.readFully(packet, HEADER_SIZE, tamanho); // espera pelo corpo todo
-        return deserialize(packet);
+        try {
+            return deserialize(packet);
+        } catch (IllegalArgumentException | IndexOutOfBoundsException e) {
+            throw new ProtocolException("Pacote inválido: " + e.getMessage());
+        }
     }
     
     public static SubControlPacket deserialize (byte[] packet) {
