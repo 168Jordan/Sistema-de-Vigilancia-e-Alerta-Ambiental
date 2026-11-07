@@ -35,16 +35,16 @@ public class UnsubscribePacket extends SubControlPacket {
         return corpo;
      }
 
-     public static UnsubscribePacket parse(byte[] corpo) throws ProtocolException {
+     public static UnsubscribePacket parse(byte[] corpo) throws IllegalArgumentException{
         if (corpo.length < 1)
-            throw new ProtocolException("UNSUBSCRIBE truncado");
+            throw new IllegalArgumentException("UNSUBSCRIBE truncado");
         int len = corpo[0] & 0xFF;
         if (len == 0 || corpo.length != 1 + len)
-            throw new ProtocolException("UNSUBSCRIBE com tamanho inconsistente");
+            throw new IllegalArgumentException("UNSUBSCRIBE com tamanho inconsistente");
         try {
             return new UnsubscribePacket(new String(corpo, 1, len, StandardCharsets.UTF_8));
         } catch (IllegalArgumentException e) {
-            throw new ProtocolException(e.getMessage());
+            throw new IllegalArgumentException(e.getMessage());
         }
     }
 }

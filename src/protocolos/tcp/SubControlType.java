@@ -1,25 +1,25 @@
 package protocolos.tcp;
 
 public enum SubControlType {
-    HELLO((byte)1),
-    HELLO_OK((byte)2),
-    REGISTER((byte)3),
-    SUBSCRIBE((byte)4),
-    UNSUBSCRIBE((byte)5),
-    BYE((byte)6),
-    REPLY((byte)7);
+    HELLO(1),
+    HELLO_OK(2),
+    REGISTER(3),
+    SUBSCRIBE(4),
+    UNSUBSCRIBE(5),
+    BYE(6),
+    REPLY(7);
 
-    private final byte codigo;
+    private final int codigo;
 
-    SubControlType(byte codigo) {
+    SubControlType(int codigo) {
         this.codigo = codigo;
     }
 
-    public byte getCodigo() {
+    public int getCodigo() {
         return codigo;
     }
 
-    public static SubControlType fromCodigo(byte codigo) {
+    public static SubControlType fromCodigo(int codigo) {
         for (SubControlType type : SubControlType.values()) {
             if (type.getCodigo() == codigo) {
                 return type;

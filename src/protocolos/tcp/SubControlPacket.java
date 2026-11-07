@@ -18,7 +18,7 @@ public abstract class SubControlPacket {
             throw new IllegalArgumentException("O tamanho do corpo do pacote excede o tamanho máximo permitido.");
         }
         byte[] packet = new byte[HEADER_SIZE + corpo.length];
-        packet[0] = getSubControlType().getCodigo(); // Tipo de subcontrole
+        packet[0] = (byte) getSubControlType().getCodigo(); // Tipo de subcontrole
         packet[1] = (byte) ((corpo.length >> 8) & 0xFF); 
         packet[2] = (byte) (corpo.length & 0xFF);
         System.arraycopy(corpo, 0, packet, HEADER_SIZE, corpo.length);
@@ -75,6 +75,8 @@ public abstract class SubControlPacket {
                 return UnsubscribePacket.parse(corpo);
             case BYE:
                 return ByePacket.parse(corpo);
+            case REPLY:
+                return ReplyPacket.parse(corpo);
             default:
                 throw new IllegalArgumentException("Tipo de subcontrole desconhecido: " + tipo);
         }

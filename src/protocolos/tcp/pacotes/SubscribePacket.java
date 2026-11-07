@@ -44,19 +44,19 @@ public class SubscribePacket extends SubControlPacket {
         return corpo;
     }
 
-    public static SubscribePacket parse(byte[] body) throws ProtocolException {
+    public static SubscribePacket parse(byte[] body) throws IllegalArgumentException {
         if (body.length < 2)
-            throw new ProtocolException("SUBSCRIBE truncado");
+            throw new IllegalArgumentException("SUBSCRIBE truncado");
         int qos = body[0] & 0xFF;
         int len = body[1] & 0xFF;
         if (qos != 1 && qos != 2)
-            throw new ProtocolException("qos inválido: " + qos);
+            throw new IllegalArgumentException("qos inválido: " + qos);
         if (len == 0 || body.length != 2 + len)
-            throw new ProtocolException("SUBSCRIBE com tamanho inconsistente");
+            throw new IllegalArgumentException("SUBSCRIBE com tamanho inconsistente");
         try {
             return new SubscribePacket(qos, new String(body, 2, len, StandardCharsets.UTF_8));
         } catch (IllegalArgumentException e) {
-            throw new ProtocolException(e.getMessage());
+            throw new IllegalArgumentException(e.getMessage());
         }
     }
     

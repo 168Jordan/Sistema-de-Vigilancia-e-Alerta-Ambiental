@@ -74,30 +74,30 @@ public class RegisterPacket extends SubControlPacket {
         return corpo;
     }
 
-    public static RegisterPacket parse(byte[] body) throws ProtocolException {
+    public static RegisterPacket parse(byte[] body) throws IllegalArgumentException{
         if (body.length < 1)
-            throw new ProtocolException("REGISTER truncado");
+            throw new IllegalArgumentException("REGISTER truncado");
         int n = body[0] & 0xFF;
         int pos = 1;
         List<Fluxo> fluxos = new ArrayList<>(n);
         try {
             for (int i = 0; i < n; i++) {
                 if (body.length - pos < 2)
-                    throw new ProtocolException("REGISTER truncado no fluxo " + i);
+                    throw new IllegalArgumentException("REGISTER truncado no fluxo " + i);
                 int qos = body[pos++] & 0xFF;
                 int len = body[pos++] & 0xFF;
                 if (qos != 1 && qos != 2)
-                    throw new ProtocolException("qos inválido: " + qos);
+                    throw new IllegalArgumentException("qos inválido: " + qos);
                 if (len == 0 || body.length - pos < len)
-                    throw new ProtocolException("tópico truncado no fluxo " + i);
+                    throw new IllegalArgumentException("tópico truncado no fluxo " + i);
                 fluxos.add(new Fluxo(qos, new String(body, pos, len, StandardCharsets.UTF_8)));
                 pos += len;
             }
             if (pos != body.length)
-                throw new ProtocolException("REGISTER com bytes a mais");
+                throw new IllegalArgumentException("REGISTER com bytes a mais");
             return new RegisterPacket(fluxos);
         } catch (IllegalArgumentException e) {
-            throw new ProtocolException(e.getMessage());
+            throw new IllegalArgumentException(e.getMessage());
         }
     }
 

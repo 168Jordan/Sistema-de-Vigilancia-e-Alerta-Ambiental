@@ -1,21 +1,22 @@
 package protocolos.tcp;
 
 public enum Roles {
-    PUBLISHER((byte)1),
-    SUBSCRIBER((byte)2),
-    BROKER((byte)3);
+    PUBLISHER(1),
+    SUBSCRIBER(2),
+    BROKER(3);
 
-    private final byte codigo;
+    private final int codigo;
 
-    Roles(byte codigo) {
+    Roles(int codigo) {
         this.codigo = codigo;
     }
 
-    public byte getCodigo() {
+    public int getCodigo() {
         return codigo;
     }
 
-    public static Roles fromCodigo(byte codigo) {
+
+    public static Roles fromCodigo(int codigo) {
         for (Roles type : Roles.values()) {
             if (type.getCodigo() == codigo) {
                 return type;
