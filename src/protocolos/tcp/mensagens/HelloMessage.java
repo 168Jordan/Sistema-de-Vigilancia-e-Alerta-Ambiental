@@ -1,16 +1,16 @@
-package protocolos.tcp.pacotes;
+package protocolos.tcp.mensagens;
 
 import protocolos.tcp.Roles;
-import protocolos.tcp.SubControlPacket;
+import protocolos.tcp.SubControlMessage;
 import protocolos.tcp.SubControlType;
 
-public final class HelloPacket extends SubControlPacket {
+public final class HelloMessage extends SubControlMessage {
 
     private final Roles role;
     private final int udpPort;
     private final String id;
 
-    public HelloPacket(Roles role, int udpPort, String id) {
+    public HelloMessage(Roles role, int udpPort, String id) {
         int idLength = id.getBytes().length;
         if (udpPort < 1 || udpPort > 65535) {
             throw new IllegalArgumentException("O valor da porta UDP deve estar entre 0 e 65535.");
@@ -40,7 +40,7 @@ public final class HelloPacket extends SubControlPacket {
         return corpo;
     }
 
-    public static HelloPacket parse(byte[] body) {
+    public static HelloMessage parse(byte[] body) {
         if (body.length < 4) {
             throw new IllegalArgumentException("O corpo do pacote é muito pequeno para conter os campos obrigatórios.");
         }
@@ -51,7 +51,7 @@ public final class HelloPacket extends SubControlPacket {
             throw new IllegalArgumentException("O tamanho do corpo do pacote não corresponde ao tamanho do ID especificado.");
         }
         String id = new String(body, 4, idLength);
-        return new HelloPacket(role, udpPort, id);
+        return new HelloMessage(role, udpPort, id);
     }
 
     public Roles getRole() {

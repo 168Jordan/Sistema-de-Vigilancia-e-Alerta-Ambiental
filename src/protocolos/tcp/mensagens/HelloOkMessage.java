@@ -1,13 +1,13 @@
-package protocolos.tcp.pacotes;
-import protocolos.tcp.SubControlPacket;
+package protocolos.tcp.mensagens;
+import protocolos.tcp.SubControlMessage;
 import protocolos.tcp.SubControlType;
 
-public class HelloOkPacket extends SubControlPacket {
+public class HelloOkMessage extends SubControlMessage {
 
     private static final int TAMANHO_CORPO = 2;
     private final int udpPort;
 
-    public HelloOkPacket(int udpPort) {
+    public HelloOkMessage(int udpPort) {
         if (udpPort < 1 || udpPort > 65535) {
             throw new IllegalArgumentException("O valor da porta UDP deve estar entre 1 e 65535.");
         }
@@ -27,7 +27,7 @@ public class HelloOkPacket extends SubControlPacket {
         };
     }
 
-    public static HelloOkPacket parse(byte[] body) {
+    public static HelloOkMessage parse(byte[] body) {
         if (body.length != TAMANHO_CORPO) {
             throw new IllegalArgumentException("O corpo do pacote HelloOk deve ter exatamente " + TAMANHO_CORPO + " bytes.");
         }
@@ -35,6 +35,6 @@ public class HelloOkPacket extends SubControlPacket {
         if (udpPort < 1 || udpPort > 65535) {
             throw new IllegalArgumentException("O valor da porta UDP deve estar entre 1 e 65535.");
         }
-        return new HelloOkPacket(udpPort);
+        return new HelloOkMessage(udpPort);
     }
 }

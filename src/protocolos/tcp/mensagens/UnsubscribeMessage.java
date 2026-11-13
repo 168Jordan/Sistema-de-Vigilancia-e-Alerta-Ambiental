@@ -1,16 +1,16 @@
-package protocolos.tcp.pacotes;
+package protocolos.tcp.mensagens;
 
 import java.net.ProtocolException;
 import java.nio.charset.StandardCharsets;
 
-import protocolos.tcp.SubControlPacket;
+import protocolos.tcp.SubControlMessage;
 import protocolos.tcp.SubControlType;
 
-public class UnsubscribePacket extends SubControlPacket {
+public class UnsubscribeMessage extends SubControlMessage {
 
     private final String filtro;
 
-    public UnsubscribePacket(String filtro) {
+    public UnsubscribeMessage(String filtro) {
         int len = filtro.getBytes().length;
         if (len < 1 || len > 255)
             throw new IllegalArgumentException("filtro fora de 1..255 bytes");
@@ -35,14 +35,14 @@ public class UnsubscribePacket extends SubControlPacket {
         return corpo;
      }
 
-     public static UnsubscribePacket parse(byte[] corpo) throws IllegalArgumentException{
+     public static UnsubscribeMessage parse(byte[] corpo) throws IllegalArgumentException{
         if (corpo.length < 1)
             throw new IllegalArgumentException("UNSUBSCRIBE truncado");
         int len = corpo[0] & 0xFF;
         if (len == 0 || corpo.length != 1 + len)
             throw new IllegalArgumentException("UNSUBSCRIBE com tamanho inconsistente");
         try {
-            return new UnsubscribePacket(new String(corpo, 1, len, StandardCharsets.UTF_8));
+            return new UnsubscribeMessage(new String(corpo, 1, len, StandardCharsets.UTF_8));
         } catch (IllegalArgumentException e) {
             throw new IllegalArgumentException(e.getMessage());
         }

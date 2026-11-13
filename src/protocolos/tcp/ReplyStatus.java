@@ -4,7 +4,8 @@ public enum ReplyStatus {
      OK(0), 
      BAD_FILTER(1), 
      NO_SESSION(2), 
-     BAD_REQUEST(3);
+     BAD_REQUEST(3),
+     PROTOCOL_ERROR(4);
 
     private final int codigo;
 

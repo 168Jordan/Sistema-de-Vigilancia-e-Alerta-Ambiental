@@ -1,17 +1,17 @@
-package protocolos.tcp.pacotes;
+package protocolos.tcp.mensagens;
 
 import java.net.ProtocolException;
 import java.nio.charset.StandardCharsets;
 
-import protocolos.tcp.SubControlPacket;
+import protocolos.tcp.SubControlMessage;
 import protocolos.tcp.SubControlType;
 
-public class SubscribePacket extends SubControlPacket {
+public class SubscribeMessage extends SubControlMessage {
 
     private final int qos;
     private final String filtro;
 
-    public SubscribePacket(int qos, String filtro) {
+    public SubscribeMessage(int qos, String filtro) {
         int len = filtro.getBytes().length;
         if (qos != 1 && qos != 2)
             throw new IllegalArgumentException("qos inválido: " + qos);
@@ -44,7 +44,7 @@ public class SubscribePacket extends SubControlPacket {
         return corpo;
     }
 
-    public static SubscribePacket parse(byte[] body) throws IllegalArgumentException {
+    public static SubscribeMessage parse(byte[] body) throws IllegalArgumentException {
         if (body.length < 2)
             throw new IllegalArgumentException("SUBSCRIBE truncado");
         int qos = body[0] & 0xFF;
@@ -54,7 +54,7 @@ public class SubscribePacket extends SubControlPacket {
         if (len == 0 || body.length != 2 + len)
             throw new IllegalArgumentException("SUBSCRIBE com tamanho inconsistente");
         try {
-            return new SubscribePacket(qos, new String(body, 2, len, StandardCharsets.UTF_8));
+            return new SubscribeMessage(qos, new String(body, 2, len, StandardCharsets.UTF_8));
         } catch (IllegalArgumentException e) {
             throw new IllegalArgumentException(e.getMessage());
         }

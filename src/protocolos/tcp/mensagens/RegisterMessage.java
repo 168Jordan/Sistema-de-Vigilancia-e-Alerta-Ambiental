@@ -1,15 +1,15 @@
-package protocolos.tcp.pacotes;
+package protocolos.tcp.mensagens;
 import java.net.ProtocolException;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
-import  protocolos.tcp.SubControlPacket;
+import  protocolos.tcp.SubControlMessage;
 import protocolos.tcp.SubControlType;
 
 
-public class RegisterPacket extends SubControlPacket {
+public class RegisterMessage extends SubControlMessage {
 
     public static final class Fluxo {
     
@@ -38,7 +38,7 @@ public class RegisterPacket extends SubControlPacket {
     private final List<Fluxo> fluxos;
 
 
-    public RegisterPacket(List<Fluxo> fluxos) {
+    public RegisterMessage(List<Fluxo> fluxos) {
         if (fluxos == null) {
             throw new IllegalArgumentException("lista de fluxos não pode ser nula");
         }
@@ -74,7 +74,7 @@ public class RegisterPacket extends SubControlPacket {
         return corpo;
     }
 
-    public static RegisterPacket parse(byte[] body) throws IllegalArgumentException{
+    public static RegisterMessage parse(byte[] body) throws IllegalArgumentException{
         if (body.length < 1)
             throw new IllegalArgumentException("REGISTER truncado");
         int n = body[0] & 0xFF;
@@ -95,7 +95,7 @@ public class RegisterPacket extends SubControlPacket {
             }
             if (pos != body.length)
                 throw new IllegalArgumentException("REGISTER com bytes a mais");
-            return new RegisterPacket(fluxos);
+            return new RegisterMessage(fluxos);
         } catch (IllegalArgumentException e) {
             throw new IllegalArgumentException(e.getMessage());
         }

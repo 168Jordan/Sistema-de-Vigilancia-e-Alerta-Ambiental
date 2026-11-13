@@ -1,9 +1,9 @@
-package protocolos.tcp.pacotes;
+package protocolos.tcp.mensagens;
 
-import protocolos.tcp.SubControlPacket;
+import protocolos.tcp.SubControlMessage;
 import protocolos.tcp.SubControlType;
 
-public class ByePacket extends SubControlPacket {
+public class ByeMessage extends SubControlMessage {
 
     
     @Override
@@ -16,10 +16,10 @@ public class ByePacket extends SubControlPacket {
         return new byte[0];
     }
     
-    public static ByePacket parse(byte[] body) throws IllegalArgumentException {
+    public static ByeMessage parse(byte[] body) throws IllegalArgumentException {
         if (body.length != 0)
             throw new IllegalArgumentException("BYE com corpo de " + body.length + " bytes");
-        return new ByePacket();
+        return new ByeMessage();
     }
     
 }

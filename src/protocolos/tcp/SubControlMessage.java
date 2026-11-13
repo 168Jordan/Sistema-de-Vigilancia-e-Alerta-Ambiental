@@ -3,9 +3,10 @@ package protocolos.tcp;
 import java.io.DataInputStream;
 import java.io.IOException;
 import java.net.ProtocolException;
-import protocolos.tcp.pacotes.*;
 
-public abstract class SubControlPacket {
+import protocolos.tcp.mensagens.*;
+
+public abstract class SubControlMessage {
 
     public static final int MAX_PACKET_SIZE = 1024; // Tamanho máximo do pacote em bytes
     public static final int HEADER_SIZE = 3; // Tamanho do cabeçalho em bytes (1 byte para o tipo de subcontrole + 2 bytes para o tamanho do payload)
@@ -25,8 +26,8 @@ public abstract class SubControlPacket {
         return packet;
     }
 
-    // NOVO: lê um pacote completo da stream TCP
-    public static SubControlPacket read(DataInputStream in) throws IOException {
+    // lê um pacote completo da stream TCP
+    public static SubControlMessage read(DataInputStream in) throws IOException {
         byte[] header = new byte[HEADER_SIZE];
         in.readFully(header);                       // EOFException se o outro lado fechou
 
@@ -45,7 +46,7 @@ public abstract class SubControlPacket {
         }
     }
     
-    public static SubControlPacket deserialize (byte[] packet) {
+    public static SubControlMessage deserialize (byte[] packet) {
         if (packet.length < HEADER_SIZE) {
             throw new IllegalArgumentException("O pacote é muito pequeno para conter um cabeçalho válido.");
         }
@@ -64,19 +65,19 @@ public abstract class SubControlPacket {
         
         switch (tipo) {
             case HELLO:
-                return HelloPacket.parse(corpo);
+                return HelloMessage.parse(corpo);
             case HELLO_OK:
-                return HelloOkPacket.parse(corpo);
+                return HelloOkMessage.parse(corpo);
             case REGISTER:
-                return RegisterPacket.parse(corpo);
+                return RegisterMessage.parse(corpo);
             case SUBSCRIBE:
-                return SubscribePacket.parse(corpo);
+                return SubscribeMessage.parse(corpo);
             case UNSUBSCRIBE:
-                return UnsubscribePacket.parse(corpo);
+                return UnsubscribeMessage.parse(corpo);
             case BYE:
-                return ByePacket.parse(corpo);
+                return ByeMessage.parse(corpo);
             case REPLY:
-                return ReplyPacket.parse(corpo);
+                return ReplyMessage.parse(corpo);
             default:
                 throw new IllegalArgumentException("Tipo de subcontrole desconhecido: " + tipo);
         }
