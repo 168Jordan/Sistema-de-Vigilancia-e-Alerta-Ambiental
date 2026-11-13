@@ -134,12 +134,19 @@ public final class SubControlStream {
             byte[] lenBytes = new byte[2];
             lerExatamente(lenBytes, 2);
             int len = ((lenBytes[0] & 0xFF) << 8) | (lenBytes[1] & 0xFF);
-            if (len > SubControlMessage.MAX_PACKET_SIZE - SubControlMessage.HEADER_SIZE) {          // antes de alocar
+            if (len > SubControlMessage.MAX_PACKET_SIZE - SubControlMessage.HEADER_SIZE) { // antes de alocar
                 throw new IllegalArgumentException("comprimento inválido: " + len);
             }
             byte[] body = new byte[len];
             lerExatamente(body, len);
-            return acompanhar(SubControlMessage.deserialize(body));
+
+            byte[] frame = new byte[SubControlMessage.HEADER_SIZE + len];
+        frame[0] = (byte) code;
+        frame[1] = lenBytes[0];
+        frame[2] = lenBytes[1];
+        System.arraycopy(body, 0, frame, SubControlMessage.HEADER_SIZE, len);
+        return acompanhar(SubControlMessage.deserialize(frame));
+            
         } catch (IllegalArgumentException e) {
             terminarComErro(CloseReason.PROTOCOL_ERROR, e.getMessage());
             return null;

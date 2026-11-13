@@ -1,8 +1,7 @@
 package protocolos.tcp.mensagens;
 
-import java.net.ProtocolException;
-import java.nio.charset.StandardCharsets;
 
+import java.nio.charset.StandardCharsets;
 import protocolos.tcp.SubControlMessage;
 import protocolos.tcp.SubControlType;
 

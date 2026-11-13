@@ -1,11 +1,6 @@
 package protocolos.tcp;
 
-import java.io.DataInputStream;
-import java.io.IOException;
-import java.net.ProtocolException;
-
 import protocolos.tcp.mensagens.*;
-
 public abstract class SubControlMessage {
 
     public static final int MAX_PACKET_SIZE = 1024; // Tamanho máximo do pacote em bytes
@@ -24,26 +19,6 @@ public abstract class SubControlMessage {
         packet[2] = (byte) (corpo.length & 0xFF);
         System.arraycopy(corpo, 0, packet, HEADER_SIZE, corpo.length);
         return packet;
-    }
-
-    // lê um pacote completo da stream TCP
-    public static SubControlMessage read(DataInputStream in) throws IOException {
-        byte[] header = new byte[HEADER_SIZE];
-        in.readFully(header);                       // EOFException se o outro lado fechou
-
-        int tamanho = ((header[1] & 0xFF) << 8) | (header[2] & 0xFF);
-        if (tamanho > MAX_PACKET_SIZE - HEADER_SIZE) {
-            throw new ProtocolException("Corpo demasiado grande: " + tamanho);
-        }
-
-        byte[] packet = new byte[HEADER_SIZE + tamanho];
-        System.arraycopy(header, 0, packet, 0, HEADER_SIZE);
-        in.readFully(packet, HEADER_SIZE, tamanho); // espera pelo corpo todo
-        try {
-            return deserialize(packet);
-        } catch (IllegalArgumentException | IndexOutOfBoundsException e) {
-            throw new ProtocolException("Pacote inválido: " + e.getMessage());
-        }
     }
     
     public static SubControlMessage deserialize (byte[] packet) {

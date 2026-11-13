@@ -13,7 +13,7 @@ public final class HelloMessage extends SubControlMessage {
     public HelloMessage(Roles role, int udpPort, String id) {
         int idLength = id.getBytes().length;
         if (udpPort < 1 || udpPort > 65535) {
-            throw new IllegalArgumentException("O valor da porta UDP deve estar entre 0 e 65535.");
+            throw new IllegalArgumentException("O valor da porta UDP deve estar entre 1 e 65535.");
         }
         if (idLength > 255 || idLength < 1) {
             throw new IllegalArgumentException("O tamanho do ID não pode exceder 255 bytes.");
@@ -32,7 +32,7 @@ public final class HelloMessage extends SubControlMessage {
     protected byte[] corpoToBytes() {
         byte[] idBytes = id.getBytes();
         byte[] corpo = new byte[1 + 2 + 1 + idBytes.length];
-        corpo[0] = (byte) role.ordinal();
+        corpo[0] = (byte) role.getCodigo();
         corpo[1] = (byte) ((udpPort >> 8) & 0xFF);
         corpo[2] = (byte) (udpPort & 0xFF);
         corpo[3] = (byte) idBytes.length;
