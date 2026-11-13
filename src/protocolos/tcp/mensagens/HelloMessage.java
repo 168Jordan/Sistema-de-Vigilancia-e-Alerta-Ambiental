@@ -44,7 +44,10 @@ public final class HelloMessage extends SubControlMessage {
         if (body.length < 4) {
             throw new IllegalArgumentException("O corpo do pacote é muito pequeno para conter os campos obrigatórios.");
         }
-        Roles role = Roles.values()[body[0]];
+        Roles role = Roles.fromCodigo(body[0] & 0xFF);
+        if (role == null) {
+            throw new IllegalArgumentException("Código de função desconhecido: " + (body[0] & 0xFF));
+        }
         int udpPort = ((body[1] & 0xFF) << 8) | (body[2] & 0xFF);
         int idLength = body[3] & 0xFF;
         if (body.length != 4 + idLength) {

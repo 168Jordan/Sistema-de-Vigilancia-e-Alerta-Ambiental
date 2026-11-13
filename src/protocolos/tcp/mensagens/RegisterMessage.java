@@ -103,6 +103,4 @@ public class RegisterMessage extends SubControlMessage {
     public List<Fluxo> getFluxos() {
         return fluxos;
     }
-
-
 }

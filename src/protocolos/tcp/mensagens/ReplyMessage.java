@@ -26,7 +26,6 @@ public final class ReplyMessage extends SubControlMessage {
     public SubControlType getSubControlType() {
         return SubControlType.REPLY;
     }
-    
        
     @Override
     protected byte[] corpoToBytes() {

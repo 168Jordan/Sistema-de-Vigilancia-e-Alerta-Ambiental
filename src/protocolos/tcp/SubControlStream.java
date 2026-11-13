@@ -119,7 +119,7 @@ public final class SubControlStream {
     // ------------------------------------------------------------- receção
 
     /** Devolve o próximo pacote, ou null se a sessão terminou. Nunca lança exceção. */
-    public SubControlMessage receber() throws IllegalArgumentException {
+    public SubControlMessage receber() {
         if (estaFechada()) return null;
         try {
             int code = in.read();
@@ -141,13 +141,13 @@ public final class SubControlStream {
             lerExatamente(body, len);
 
             byte[] frame = new byte[SubControlMessage.HEADER_SIZE + len];
-        frame[0] = (byte) code;
-        frame[1] = lenBytes[0];
-        frame[2] = lenBytes[1];
-        System.arraycopy(body, 0, frame, SubControlMessage.HEADER_SIZE, len);
-        return acompanhar(SubControlMessage.deserialize(frame));
+            frame[0] = (byte) code;
+            frame[1] = lenBytes[0];
+            frame[2] = lenBytes[1];
+            System.arraycopy(body, 0, frame, SubControlMessage.HEADER_SIZE, len);
+            return acompanhar(SubControlMessage.deserialize(frame));
             
-        } catch (IllegalArgumentException e) {
+        } catch (IllegalArgumentException | IndexOutOfBoundsException e) {
             terminarComErro(CloseReason.PROTOCOL_ERROR, e.getMessage());
             return null;
         } catch (EOFException e) {
