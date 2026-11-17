@@ -57,8 +57,7 @@ public class Broker {
     private static final long HANDSHAKE_TIMEOUT_MS = 5000;
     private static final long REPLY_TIMEOUT_MS = 5000;
 
-    public Broker(String brokerId, int brokerUDPPort, int brokerTCPPort, InetAddress brokerIP)
-            throws IOException {
+    public Broker(InetAddress brokerIP, String brokerId, int brokerUDPPort, int brokerTCPPort) throws IOException {
         if (brokerId == null || brokerId.isBlank()) {
             throw new IllegalArgumentException("id do broker não pode ser vazio");
         }
@@ -70,14 +69,7 @@ public class Broker {
         this.brokerIP = brokerIP == null ? InetAddress.getLoopbackAddress() : brokerIP;
     }
 
-    public Broker(String brokerId, int brokerUDPPort, int brokerTCPPort) throws IOException {
-        this(brokerId, brokerUDPPort, brokerTCPPort, InetAddress.getLoopbackAddress());
-    }
-
-    public Broker(String brokerId, int brokerUDPPort, int brokerTCPPort, String brokerIP)
-            throws IOException {
-        this(brokerId, brokerUDPPort, brokerTCPPort, InetAddress.getByName(brokerIP));
-    }
+    
 
     public synchronized void start() throws IOException {
         if (running) return;
@@ -461,5 +453,22 @@ public class Broker {
             if (!filtroPartes[i].equals(topicoPartes[i])) return false;
         }
         return filtroPartes.length == topicoPartes.length;
+    }
+
+    public static void main(String[] args) {
+        if (args.length < 1) {
+            System.err.println("Uso: java Broker <brokerIP>");
+            System.exit(1);
+        }
+        try {
+            InetAddress brokerIP = InetAddress.getByName(args[0]);
+            Broker broker = new Broker(brokerIP, "broker1", 5000, 6000); // Ver isto com configs
+            broker.run();
+        }
+        catch (Exception e) {
+            System.err.println("Erro ao iniciar o broker: " + e.getMessage());
+            e.printStackTrace();
+            System.exit(1);
+        }
     }
 }
