@@ -253,6 +253,17 @@ public class Broker {
         // processado silenciosamente quando não há transporte fiável adicional.
     }
 
+    private void enviarUDP(EventCastMessage message, InetAddress ip, int port) {
+        if (!running || udpSocket == null) return;
+        try {
+            byte[] data = message.serialize();
+            DatagramPacket packet = new DatagramPacket(data, data.length, ip, port);
+            udpSocket.send(packet);
+        } catch (IOException e) {
+            System.err.println("Erro a enviar datagrama UDP: " + e.getMessage());
+        }
+    }
+
     // Registo público de um publisher.
     public void registerPublisher(String id, InetAddress ip, int port) {
         validarId(id);
@@ -355,19 +366,7 @@ public class Broker {
         DataMessage deliver = message.paraEntrega(hopSeq, qosEfetivo);
         enviarUDP(deliver, ip, port);
     }
-
-    // Envio de uma mensagem UDP para um endereço e porta específicos.
-    private void enviarUDP(EventCastMessage message, InetAddress ip, int port) {
-        if (!running || udpSocket == null) return;
-        try {
-            byte[] data = message.serialize();
-            DatagramPacket packet = new DatagramPacket(data, data.length, ip, port);
-            udpSocket.send(packet);
-        } catch (IOException e) {
-            System.err.println("Erro a enviar datagrama UDP: " + e.getMessage());
-        }
-    }
-
+    
     // Getters públicos para os campos do broker
 
     public String getBrokerId() { 
