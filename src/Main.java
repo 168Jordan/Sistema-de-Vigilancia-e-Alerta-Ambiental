@@ -1,17 +1,21 @@
 import broker.Broker;
 import config.Config;
+import protocolos.Publisher;
+import protocolos.Subscriber;
 
+import java.io.IOException;
 import java.net.InetAddress;
 import java.nio.file.Paths;
+import java.util.Locale;
 
 public final class Main {
     private Main() { }
 
     public static void main(String[] args) {
         try {
-            if (args.length < 1) throw new IllegalArgumentException(usage());
+            if (args.length < 1) throw new IllegalArgumentException("papel em falta");
 
-            String role = args[0].toLowerCase(java.util.Locale.ROOT);
+            String role = args[0].toLowerCase(Locale.ROOT);
             if (!role.equals("broker") && !role.equals("publisher") && !role.equals("subscriber")) {
                 throw new IllegalArgumentException("papel inválido: " + args[0]);
             }
@@ -30,26 +34,32 @@ public final class Main {
                         throw new IllegalArgumentException("opção desconhecida: " + args[i]);
                 }
             }
-
             if (id == null || id.isBlank()) throw new IllegalArgumentException("--id é obrigatório");
             if (configPath == null || configPath.isBlank()) {
                 throw new IllegalArgumentException("--config é obrigatório");
             }
 
             Config config = Config.load(Paths.get(configPath));
+            config.validar(role);
 
-            if (role.equals("broker")) {
-                iniciarBroker(id, config);
-            } else {
-                throw new IllegalArgumentException("papel '" + role
-                        + "' ainda não está implementado neste projeto");
+            switch (role) {
+                case "broker":
+                    iniciarBroker(id, config);
+                    break;
+                case "publisher":
+                    Publisher.run(id, config);
+                    break;
+                default:
+                    Subscriber.run(id, config);
+                    break;
             }
-        } catch (IllegalArgumentException | java.io.IOException e) {
+            System.exit(0);
+        } catch (IllegalArgumentException | IOException e) {
             System.err.println("Erro: " + e.getMessage());
             System.err.println("Uso: " + usage());
             System.exit(1);
         } catch (Exception e) {
-            System.err.println("Erro ao iniciar: " + e.getMessage());
+            System.err.println("Erro: " + e.getMessage());
             System.exit(1);
         }
     }
@@ -60,45 +70,18 @@ public final class Main {
     }
 
     private static void iniciarBroker(String id, Config config) throws Exception {
-        String ip = firstValue(config,
-                "broker." + id + ".ip",
-                "broker." + id + ".host",
-                "broker." + id + ".address",
-                id + ".ip", id + ".host", id + ".address",
-                "broker.ip", "broker.host", "broker.address",
-                "ip", "host");
+        InetAddress bind = InetAddress.getByName(config.getString("bind"));
+        int controlPort = config.getInt("control_port");
+        int dataPort = config.getInt("data_port");
+        long duracaoMs = config.getInt("duration") * 1000L;
 
-        int udpPort = firstInt(config, 5000,
-                "broker." + id + ".udpPort", "broker." + id + ".udp.port",
-                "broker." + id + ".udp", id + ".udpPort", id + ".udp.port", id + ".udp",
-                "broker.udpPort", "broker.udp.port", "broker.udp", "udpPort", "udp.port", "udp");
-
-        int tcpPort = firstInt(config, 6000,
-                "broker." + id + ".tcpPort", "broker." + id + ".tcp.port",
-                "broker." + id + ".tcp", id + ".tcpPort", id + ".tcp.port", id + ".tcp",
-                "broker.tcpPort", "broker.tcp.port", "broker.tcp", "tcpPort", "tcp.port", "tcp");
-
-        if (ip == null || ip.isBlank()) ip = "127.0.0.1";
-        Broker broker = new Broker(InetAddress.getByName(ip), id, udpPort, tcpPort);
-        broker.run();
-    }
-
-    private static String firstValue(Config config, String... keys) {
-        for (String key : keys) {
-            String value = config.get(key);
-            if (value != null) return value;
-        }
-        return null;
-    }
-
-    private static int firstInt(Config config, int defaultValue, String... keys) {
-        for (String key : keys) {
-            if (config.containsKey(key)) return config.getInt(key, defaultValue);
-        }
-        return defaultValue;
+        Broker broker = new Broker(bind, id, dataPort, controlPort);
+        broker.start();
+        Thread.sleep(duracaoMs);
+        broker.stop();
     }
 
     private static String usage() {
-        return "java Main <broker|publisher|subscriber> --id <id> --config <ficheiro>";
+        return "run.sh <broker|publisher|subscriber> --id <id> --config <ficheiro>";
     }
 }

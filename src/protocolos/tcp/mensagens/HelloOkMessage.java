@@ -37,4 +37,8 @@ public class HelloOkMessage extends SubControlMessage {
         }
         return new HelloOkMessage(udpPort);
     }
+
+        public int getUdpPort() {
+            return udpPort;
+        }
 }
