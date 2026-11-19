@@ -12,6 +12,9 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import protocolos.tcp.ReplyStatus;
@@ -26,6 +29,7 @@ import protocolos.tcp.mensagens.ReplyMessage;
 import protocolos.tcp.mensagens.SubscribeMessage;
 import protocolos.tcp.mensagens.UnsubscribeMessage;
 import protocolos.udp.EventCastMessage;
+import protocolos.udp.ReceptorJanela;
 import protocolos.udp.mensagens.AckMessage;
 import protocolos.udp.mensagens.DataMessage;
 
@@ -41,7 +45,12 @@ public class Broker {
     private final Map<String, Map<String, Integer>> publisherRegistrations = new ConcurrentHashMap<>();
     private final Map<String, DataMessage> publishedTopics = new ConcurrentHashMap<>();
     private final Map<String, AtomicInteger> subscriberSequences = new ConcurrentHashMap<>();
-    private final Set<String> receivedPublisherMessages = ConcurrentHashMap.newKeySet();
+    /* Estado de receção (hopSeq) de cada publisher, chave ip:porta UDP. */
+    private final Map<String, ReceptorJanela> receptoresPublishers = new ConcurrentHashMap<>();
+
+    /* Estado de entrega por subscritor (janela + fila), por id e por ip:porta UDP (para os ACK). */
+    private final Map<String, EntregaSubscritor> entregas = new ConcurrentHashMap<>();
+    private final Map<String, EntregaSubscritor> entregasPorEndereco = new ConcurrentHashMap<>();
 
     private final String brokerId;
     private final int brokerUDPPort;
@@ -53,9 +62,14 @@ public class Broker {
     private volatile DatagramSocket udpSocket;
     private Thread tcpThread;
     private Thread udpThread;
+    private ScheduledExecutorService temporizador;
 
     private static final long HANDSHAKE_TIMEOUT_MS = 5000;
     private static final long REPLY_TIMEOUT_MS = 5000;
+    /** Temporizador de retransmissão por mensagem no salto broker -> subscritor (ms). */
+    private static final long RTO_ENTREGA_MS = 200;
+    /** Período com que o broker verifica retransmissões (ms). */
+    private static final long TICK_MS = 50;
 
     public Broker(InetAddress brokerIP, String brokerId, int brokerUDPPort, int brokerTCPPort) throws IOException {
         if (brokerId == null || brokerId.isBlank()) {
@@ -85,6 +99,14 @@ public class Broker {
         udpThread = new Thread(this::receberDatagramasUDP, "broker-udp-" + brokerId);
         udpThread.setDaemon(true);
         udpThread.start();
+
+        temporizador = Executors.newSingleThreadScheduledExecutor(r -> {
+            Thread t = new Thread(r, "broker-timer-" + brokerId);
+            t.setDaemon(true);
+            return t;
+        });
+        temporizador.scheduleWithFixedDelay(this::tratarTemporizadores,
+                TICK_MS, TICK_MS, TimeUnit.MILLISECONDS);
     }
 
     public void run() throws IOException {
@@ -103,6 +125,7 @@ public class Broker {
             try { tcpServer.close(); } catch (IOException ignored) { }
         }
         if (udpSocket != null && !udpSocket.isClosed()) udpSocket.close();
+        if (temporizador != null) temporizador.shutdownNow();
     }
 
 
@@ -146,6 +169,7 @@ public class Broker {
                 subscribersPorts.put(id, hello.getUdpPort());
                 subscriberSubscriptions.putIfAbsent(id, new ConcurrentHashMap<>());
                 subscriberSequences.putIfAbsent(id, new AtomicInteger(0));
+                entregaDe(id, socket.getInetAddress(), hello.getUdpPort());
             }
 
             stream.enviar(new HelloOkMessage(brokerUDPPort));
@@ -184,10 +208,14 @@ public class Broker {
         } finally {
             if (id != null) {
                 if (role == Roles.PUBLISHER) {
+                    Integer porta = publishersPorts.remove(id);
+                    if (porta != null) {
+                        receptoresPublishers.remove(socket.getInetAddress().getHostAddress() + ":" + porta);
+                    }
                     publishersIP.remove(id);
-                    publishersPorts.remove(id);
                     publisherRegistrations.remove(id);
                 } else if (role == Roles.SUBSCRIBER) {
+                    removerEntrega(id);
                     subscribersIP.remove(id);
                     subscribersPorts.remove(id);
                     subscriberSubscriptions.remove(id);
@@ -229,20 +257,44 @@ public class Broker {
         }
 
         String publisherKey = senderIP.getHostAddress() + ":" + senderPort;
-        String dedupKey = publisherKey + ":" + message.getMsgId() + ":" + message.getHopSeq();
-        boolean novo = receivedPublisherMessages.add(dedupKey);
+        ReceptorJanela receptor = receptoresPublishers
+                .computeIfAbsent(publisherKey, k -> new ReceptorJanela());
 
-        if (novo) publish(message);
+        /* Só a primeira chegada de cada hopSeq é publicada; retransmissões só são confirmadas. */
+        if (receptor.receber(message.getHopSeq())) publish(message);
 
-        /* QoS 1 e 2 recebem confirmação no salto entre publisher e broker. */
-        enviarUDP(new AckMessage(message.getHopSeq() + 1 & 0xFFFF, 0),
-                senderIP, senderPort);
+        /* ACK cumulativo + SACK do estado atual, para novos e para duplicados. */
+        enviarUDP(receptor.criarAck(), senderIP, senderPort);
     }
 
     private void tratarAckUDP(AckMessage ack, InetAddress senderIP, int senderPort) {
-        // Os ACK dos subscritores confirmam o hopSeq do broker. O estado necessário
-        // para retransmissão pode ser consultado pelas tabelas por id, mas o ACK é
-        // processado silenciosamente quando não há transporte fiável adicional.
+        EntregaSubscritor entrega =
+                entregasPorEndereco.get(senderIP.getHostAddress() + ":" + senderPort);
+        if (entrega != null) entrega.aoReceberAck(ack, System.currentTimeMillis());
+    }
+
+    private void tratarTemporizadores() {
+        try {
+            long agora = System.currentTimeMillis();
+            for (EntregaSubscritor entrega : entregas.values()) entrega.tick(agora);
+        } catch (RuntimeException e) {
+            System.err.println("Erro no temporizador do broker: " + e);
+        }
+    }
+
+    /** Estado de entrega do subscritor, criado na primeira vez que é preciso. */
+    private EntregaSubscritor entregaDe(String id, InetAddress ip, int port) {
+        return entregas.computeIfAbsent(id, k -> {
+            EntregaSubscritor entrega =
+                    new EntregaSubscritor(m -> enviarUDP(m, ip, port), RTO_ENTREGA_MS);
+            entregasPorEndereco.put(ip.getHostAddress() + ":" + port, entrega);
+            return entrega;
+        });
+    }
+
+    private void removerEntrega(String id) {
+        EntregaSubscritor entrega = entregas.remove(id);
+        if (entrega != null) entregasPorEndereco.values().remove(entrega);
     }
 
     private void enviarUDP(EventCastMessage message, InetAddress ip, int port) {
@@ -273,6 +325,7 @@ public class Broker {
         subscribersPorts.put(id, port);
         subscriberSubscriptions.putIfAbsent(id, new ConcurrentHashMap<>());
         subscriberSequences.putIfAbsent(id, new AtomicInteger(0));
+        entregaDe(id, ip, port);
     }
 
     // Registo público de um tópico de um publisher.
@@ -337,12 +390,8 @@ public class Broker {
 
     // Entrega uma mensagem a um subscritor específico, considerando o QoS efetivo.
     private void entregar(DataMessage message, String subscriberId) {
-        InetAddress ip = subscribersIP.get(subscriberId);
-        Integer port = subscribersPorts.get(subscriberId);
-        if (ip == null || port == null) return;
-
-        int hopSeq = subscriberSequences.computeIfAbsent(subscriberId, k -> new AtomicInteger(0))
-                .getAndUpdate(v -> (v + 1) & 0xFFFF);
+        EntregaSubscritor entrega = entregas.get(subscriberId);
+        if (entrega == null) return;
 
         int qosSubscriber = 1;
         Map<String, Integer> subscriptions = subscriberSubscriptions.get(subscriberId);
@@ -355,8 +404,7 @@ public class Broker {
             }
         }
         int qosEfetivo = Math.min(message.getQos(), qosSubscriber);
-        DataMessage deliver = message.paraEntrega(hopSeq, qosEfetivo);
-        enviarUDP(deliver, ip, port);
+        entrega.entregar(message, qosEfetivo, System.currentTimeMillis());
     }
     
     // Getters públicos para os campos do broker

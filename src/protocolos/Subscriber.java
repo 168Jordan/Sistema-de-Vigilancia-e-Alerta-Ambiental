@@ -19,6 +19,7 @@ import protocolos.tcp.mensagens.ReplyMessage;
 import protocolos.tcp.mensagens.SubscribeMessage;
 import protocolos.udp.EventCastMessage;
 import protocolos.udp.EventCastType;
+import protocolos.udp.ReceptorJanela;
 import protocolos.udp.mensagens.AckMessage;
 import protocolos.udp.mensagens.DataMessage;
 
@@ -55,6 +56,7 @@ public final class Subscriber {
 
             udpSocket.setSoTimeout(1000);
             byte[] buf = new byte[EventCastMessage.TAMANHO_BUFFER];
+            ReceptorJanela receptor = new ReceptorJanela();
 
             while (System.currentTimeMillis() - inicio < duracaoMs) {
                 DatagramPacket packet = new DatagramPacket(buf, buf.length);
@@ -64,17 +66,30 @@ public final class Subscriber {
                     continue;
                 }
 
-                EventCastMessage msg = EventCastMessage.deserialize(packet.getData(), packet.getLength());
+                EventCastMessage msg;
+                try {
+                    msg = EventCastMessage.deserialize(packet.getData(), packet.getLength());
+                } catch (IllegalArgumentException e) {
+                    continue;   // datagrama inválido: descartado, sem ACK
+                }
+
                 if (msg instanceof DataMessage
                         && msg.getEventCastType() == EventCastType.DELIVER) {
                     DataMessage entrega = (DataMessage) msg;
+                    boolean nova = receptor.receber(entrega.getHopSeq());
 
-                    logWriter.write(System.currentTimeMillis() + " " + id + " "
-                            + entrega.getTopico() + " " + entrega.getMsgId());
-                    logWriter.newLine();
-                    logWriter.flush();
+                    // G1 (qos 1): regista todas as chegadas, mesmo repetidas.
+                    // G2 (qos 2): regista só a primeira vez que a entrega chega.
+                    if (nova || entrega.getQos() == 1) {
+                        logWriter.write(System.currentTimeMillis() + " " + id + " "
+                                + entrega.getTopico() + " " + entrega.getMsgId());
+                        logWriter.newLine();
+                        logWriter.flush();
+                    }
 
-                    byte[] ack = new AckMessage(entrega.getHopSeq(), 0).serialize();
+                    // ACK (base, sack) do estado atual, também para repetidas:
+                    // se o ACK anterior se perdeu, o broker retransmite e precisa deste.
+                    byte[] ack = receptor.criarAck().serialize();
                     udpSocket.send(new DatagramPacket(ack, ack.length,
                             packet.getAddress(), packet.getPort()));
                 }
