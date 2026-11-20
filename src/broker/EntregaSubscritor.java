@@ -36,6 +36,8 @@ final class EntregaSubscritor {
 
     private final EmissorJanela emissor;
     private final Deque<Item> fila = new ArrayDeque<>();
+    /** Início do prazo de evict_after: o último ACK, ou o instante em que passou a haver algo por entregar. */
+    private long referencia;
 
     EntregaSubscritor(EmissorJanela.Transmissor transmissor, long rtoMs) {
         this.emissor = new EmissorJanela(transmissor, rtoMs);
@@ -43,12 +45,14 @@ final class EntregaSubscritor {
 
     /** Põe a publicação na fila deste subscritor e envia o que a janela deixar. */
     synchronized void entregar(DataMessage original, int qosEfetivo, long agora) {
+        if (pendentes() == 0) referencia = agora;     // estava em repouso: o prazo conta a partir daqui
         fila.add(new Item(original.getMsgId(), original.getTopico(),
                 original.getConteudo(), qosEfetivo));
         escoar(agora);
     }
 
     synchronized void aoReceberAck(AckMessage ack, long agora) {
+        referencia = agora;                            // o subscritor está vivo
         emissor.aoReceberAck(ack);
         escoar(agora);
     }
@@ -61,6 +65,11 @@ final class EntregaSubscritor {
             // o transmissor trata os seus próprios erros de envio
         }
         escoar(agora);
+    }
+
+    /** Há algo por entregar e passou evictMs sem nenhum ACK? */
+    synchronized boolean expirou(long agora, long evictMs) {
+        return pendentes() > 0 && agora - referencia >= evictMs;
     }
 
     synchronized int pendentes() {

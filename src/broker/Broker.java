@@ -51,10 +51,13 @@ public class Broker {
     /* Estado de entrega por subscritor (janela + fila), por id e por ip:porta UDP (para os ACK). */
     private final Map<String, EntregaSubscritor> entregas = new ConcurrentHashMap<>();
     private final Map<String, EntregaSubscritor> entregasPorEndereco = new ConcurrentHashMap<>();
+    /* Sessão TCP de cada subscritor, para a poder fechar quando é expulso. */
+    private final Map<String, SubControlStream> sessoesSubscritores = new ConcurrentHashMap<>();
 
     private final String brokerId;
     private final int brokerUDPPort;
     private final int brokerTCPPort;
+    private final long evictAfterMs;
     private final InetAddress brokerIP;
 
     private volatile boolean running;
@@ -71,12 +74,20 @@ public class Broker {
     /** Período com que o broker verifica retransmissões (ms). */
     private static final long TICK_MS = 50;
 
+    /** Sem expulsão de subscritores. */
     public Broker(InetAddress brokerIP, String brokerId, int brokerUDPPort, int brokerTCPPort) throws IOException {
+        this(brokerIP, brokerId, brokerUDPPort, brokerTCPPort, Long.MAX_VALUE);
+    }
+
+    /** evictAfterMs: tempo que um subscritor pode estar sem confirmar nada, havendo algo por lhe entregar. */
+    public Broker(InetAddress brokerIP, String brokerId, int brokerUDPPort, int brokerTCPPort,
+                  long evictAfterMs) throws IOException {
         if (brokerId == null || brokerId.isBlank()) {
             throw new IllegalArgumentException("id do broker não pode ser vazio");
         }
         validarPorta(brokerUDPPort, "porta UDP");
         validarPorta(brokerTCPPort, "porta TCP");
+        this.evictAfterMs = evictAfterMs;
         this.brokerId = brokerId;
         this.brokerUDPPort = brokerUDPPort;
         this.brokerTCPPort = brokerTCPPort;
@@ -170,6 +181,7 @@ public class Broker {
                 subscriberSubscriptions.putIfAbsent(id, new ConcurrentHashMap<>());
                 subscriberSequences.putIfAbsent(id, new AtomicInteger(0));
                 entregaDe(id, socket.getInetAddress(), hello.getUdpPort());
+                sessoesSubscritores.put(id, stream);
             }
 
             stream.enviar(new HelloOkMessage(brokerUDPPort));
@@ -216,6 +228,7 @@ public class Broker {
                     publisherRegistrations.remove(id);
                 } else if (role == Roles.SUBSCRIBER) {
                     removerEntrega(id);
+                    sessoesSubscritores.remove(id);
                     subscribersIP.remove(id);
                     subscribersPorts.remove(id);
                     subscriberSubscriptions.remove(id);
@@ -276,10 +289,25 @@ public class Broker {
     private void tratarTemporizadores() {
         try {
             long agora = System.currentTimeMillis();
-            for (EntregaSubscritor entrega : entregas.values()) entrega.tick(agora);
+            for (Map.Entry<String, EntregaSubscritor> e : entregas.entrySet()) {
+                if (e.getValue().expirou(agora, evictAfterMs)) {
+                    expulsar(e.getKey());
+                } else {
+                    e.getValue().tick(agora);
+                }
+            }
         } catch (RuntimeException e) {
             System.err.println("Erro no temporizador do broker: " + e);
         }
+    }
+
+    /** Expulsa um subscritor que deixou de confirmar: descarta a fila e fecha-lhe a sessão TCP. */
+    private void expulsar(String id) {
+        System.err.println("Broker " + brokerId + ": subscritor '" + id
+                + "' expulso (sem confirmar há mais de evict_after)");
+        removerEntrega(id);
+        SubControlStream sessao = sessoesSubscritores.remove(id);
+        if (sessao != null) sessao.fechar();
     }
 
     /** Estado de entrega do subscritor, criado na primeira vez que é preciso. */

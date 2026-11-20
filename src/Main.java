@@ -75,7 +75,9 @@ public final class Main {
         int dataPort = config.getInt("data_port");
         long duracaoMs = config.getInt("duration") * 1000L;
 
-        Broker broker = new Broker(bind, id, dataPort, controlPort);
+        long evictAfterMs = config.getInt("evict_after") * 1000L;
+
+        Broker broker = new Broker(bind, id, dataPort, controlPort, evictAfterMs);
         broker.start();
         Thread.sleep(duracaoMs);
         broker.stop();

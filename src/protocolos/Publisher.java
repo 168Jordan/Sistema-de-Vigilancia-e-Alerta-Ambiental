@@ -17,6 +17,8 @@ import protocolos.tcp.SubControlMessage;
 import protocolos.tcp.SubControlStream;
 import protocolos.tcp.mensagens.HelloMessage;
 import protocolos.tcp.mensagens.HelloOkMessage;
+import protocolos.tcp.mensagens.RegisterMessage;
+import protocolos.tcp.mensagens.ReplyMessage;
 import protocolos.udp.EmissorJanela;
 import protocolos.udp.EventCastMessage;
 import protocolos.udp.EventCastType;
@@ -47,6 +49,15 @@ public final class Publisher {
             if (!(resp instanceof HelloOkMessage)) {
                 throw new IOException("handshake falhou: esperado HELLO_OK");
             }
+            // Regista cada fluxo no broker (um REGISTER por fluxo, cada um com o seu REPLY).
+            for (Config.Publish f : fluxos) {
+                stream.enviar(new RegisterMessage(List.of(new RegisterMessage.Fluxo(f.qos(), f.topico()))));
+                SubControlMessage reply = stream.receber();
+                if (!(reply instanceof ReplyMessage) || !((ReplyMessage) reply).isOk()) {
+                    throw new IOException("REGISTER recusado para " + f.topico());
+                }
+            }
+
             final int brokerDataPort = ((HelloOkMessage) resp).getUdpPort();
             final InetAddress brokerAddr = InetAddress.getByName(broker.host());
 
